@@ -36,6 +36,7 @@ mount -o bind /dev /mnt/dev
 mount -o bind /dev/pts /mnt/dev/pts
 mount -o bind /proc /mnt/proc
 mount -o bind /sys /mnt/sys
+mount -o bind /run /mnt/run
 
 #chroot /mnt /bin/bash
 chroot /mnt passwd root
