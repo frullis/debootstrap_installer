@@ -7,7 +7,7 @@ mkfs.ext4 /dev/sda2
 
 #encrypt and set a password
 cryptsetup -s 512 -c aes-xts-plain64 luksFormat /dev/sda3
-cryptsetup luksOpen /dev/sdb3 sda3_crypt
+cryptsetup luksOpen /dev/sda3 sda3_crypt
 
 #This may give you some error about cannot connect to lvmetad, (But should work anyway)
 pvcreate /dev/mapper/sda3_crypt
@@ -30,60 +30,61 @@ for i in home tmp var; do mount /dev/mapper/vg0-sys--$i /mnt/$i; done
 swapon /dev/mapper/vg0-sys--swap
 chmod 1777 /mnt/tmp
 
-debootstrap --arch amd64 stretch /mnt/ http://ftp.se.debian.org/debian
+debootstrap --arch amd64 buster /mnt/ http://ftp.se.debian.org/debian
 
 mount -o bind /dev /mnt/dev
 mount -o bind /dev/pts /mnt/dev/pts
 mount -o bind /proc /mnt/proc
 mount -o bind /sys /mnt/sys
 
-chroot /mnt /bin/bash
-passwd root
-cp /proc/mounts /etc/mtab
+#chroot /mnt /bin/bash
+chroot /mnt passwd root
+chroot /mnt cp /proc/mounts /etc/mtab
 
 export HOSTNAME=stoth2
 export IP=98.128.186.83
 export DOMAINNAME=example.net
 
-echo "$HOSTNAME" > /etc/hostname
-echo "$HOSTNAME" > /etc/mailname
-echo "$IP $HOSTNAME ${HOSTNAME}.${DOMAINNAME}" >> /etc/hosts
+echo "$HOSTNAME" > /mnt/etc/hostname
+echo "$HOSTNAME" > /mnt/etc/mailname
+echo "$IP $HOSTNAME ${HOSTNAME}.${DOMAINNAME}" >> /mnt/etc/hosts
 
-cat > /etc/resolv.conf << EOF
+cat > /mnt/etc/resolv.conf << EOF
 search $DOMAINNAME
 nameserver 1.1.1.1
 EOF
 
-cat > /etc/network/interfaces << EOF
+cat > /mnt/etc/network/interfaces << EOF
 auto lo
 iface lo inet loopback
 
-auto eth0
-iface eth0 inet static
+auto eno1
+iface eno1 inet static
 	address ${IP}
-	netmask 255.255.255.192
-	broadcast 10.0.0.63
-	gateway 10.0.0.1
-	pre-up /sbin/ip addr flush dev eth0 || true
+	netmask 255.255.255.0
+	broadcast 10.64.6.255
+	gateway 10.64.6.1
+	pre-up /sbin/ip addr flush dev eno1 || true
 EOF
 
-cat > /etc/apt/sources.list << EOF
-deb http://ftp.se.debian.org/debian/ stretch main non-free contrib
-deb-src http://ftp.se.debian.org/debian/ stretch main non-free contrib
-deb http://security.debian.org/ stretch/updates main non-free contrib
-deb-src http://security.debian.org/ stretch/updates main non-free contrib
-deb http://ftp.se.debian.org/debian/ stretch-updates main non-free contrib
-deb-src http://ftp.se.debian.org/debian/ stretch-updates main non-free contrib
+cat > /mnt/etc/apt/sources.list << EOF
+deb http://ftp.se.debian.org/debian/ buster main non-free contrib
+deb-src http://ftp.se.debian.org/debian/ buster main non-free contrib
+deb http://security.debian.org/ buster/updates main non-free contrib
+deb-src http://security.debian.org/ buster/updates main non-free contrib
+deb http://ftp.se.debian.org/debian/ buster-updates main non-free contrib
+deb-src http://ftp.se.debian.org/debian/ buster-updates main non-free contrib
 EOF
 
-apt-get update
-apt upgrade -y vim linux-base linux-image-amd64 linux-headers-amd64 grub-pc cryptsetup lvm2 initramfs-tools openssh-server busybox dropbear locales firmware-bnx2
-dpkg-reconfigure locales
+chroot /mnt apt-get update
+chroot /mnt apt upgrade -y vim linux-base linux-image-amd64 linux-headers-amd64 grub-pc cryptsetup lvm2 initramfs-tools openssh-server busybox dropbear locales firmware-bnx2
+chroot /mnt dpkg-reconfigure locales
 
-echo "sda3_crypt UUID=$(blkid -s UUID -o value /dev/sda3) none luks" > /etc/crypttab
+echo "sda3_crypt UUID=$(blkid -s UUID -o value /dev/sda3) none luks" > /mnt/etc/crypttab
 
-cat > /etc/fstab << EOF
+cat > /mnt/etc/fstab << EOF
 proc                        /proc   proc    defaults    0 0
+devpts          /dev/pts        devpts  rw,noexec,nosuid,gid=5,mode=620 0  0
 UUID=$(blkid -s UUID -o value /dev/sda2)                    /boot   ext4    defaults   0 0
 UUID=$(blkid -s UUID -o value /dev/mapper/vg0-sys--root) /       ext4    defaults   0 1
 UUID=$(blkid -s UUID -o value /dev/mapper/vg0-sys--var)  /var    ext4    defaults   0 2
@@ -92,29 +93,29 @@ UUID=$(blkid -s UUID -o value /dev/mapper/vg0-sys--tmp) /tmp   ext4    rw,nosuid
 UUID=$(blkid -s UUID -o value /dev/mapper/vg0-sys--swap)  none    swap defaults     0 0
 EOF
 
-ln -sf /proc/mounts /etc/mtab
+chroot /mnt ln -sf /proc/mounts /etc/mtab
 
-mkdir -p /root/.ssh
-chmod 600 /root/.ssh
+mkdir -p /mnt/root/.ssh
+chmod 600 /mnt/root/.ssh
 
-echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDss65zE2i1JDVdm9ybW1rXf7IeBHBgBzXKulA7L8iT9Rhzr/3U9F+GQCudmSx0GGGr9+N/FAVkZGajOxshPpd6y6+j4GARg5IYG33W+U/9jjrwKXHHNCs6ZGY/AXoNEcVHRUqr8D0BxpruvZVUYIz3oWG2RHYhBnjIg8sIH1+HjY8zhtkcfzrmo1coahK73xnrg4V9Jw9fRpRj9vqD57nuIyypbvY3cgGoiCJXSzXUme1+tT8dSIfW8Iufcv0ppc8e18x7LYjXP1uwJgKLItYZYwUWD//KbT0n3dHUscvarsE8BTwZVedxC2ilX2s8zSm9e7nhuU4XcQnVcrtrNLpz krullis@krullis-UX330CAK" > /root/.ssh/authorized_keys
+echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDss65zE2i1JDVdm9ybW1rXf7IeBHBgBzXKulA7L8iT9Rhzr/3U9F+GQCudmSx0GGGr9+N/FAVkZGajOxshPpd6y6+j4GARg5IYG33W+U/9jjrwKXHHNCs6ZGY/AXoNEcVHRUqr8D0BxpruvZVUYIz3oWG2RHYhBnjIg8sIH1+HjY8zhtkcfzrmo1coahK73xnrg4V9Jw9fRpRj9vqD57nuIyypbvY3cgGoiCJXSzXUme1+tT8dSIfW8Iufcv0ppc8e18x7LYjXP1uwJgKLItYZYwUWD//KbT0n3dHUscvarsE8BTwZVedxC2ilX2s8zSm9e7nhuU4XcQnVcrtrNLpz krullis@krullis-UX330CAK" > /mnt/root/.ssh/authorized_keys
 
 #Enable dropbear
-sed -i "s/NO_START=1/NO_START=0/" /etc/default/dropbear
-echo "DEVICE=eth0" >> /etc/initramfs-tools/initramfs.conf
-sed -i "s/^#CRYPTSETUP=$/CRYPTSETUP=y/" /etc/cryptsetup-initramfs/conf-hook
+sed -i "s/NO_START=1/NO_START=0/" /mnt/etc/default/dropbear
+echo "DEVICE=eno1" >> /mnt/etc/initramfs-tools/initramfs.conf
+sed -i "s/^#CRYPTSETUP=$/CRYPTSETUP=y/" /mnt/etc/cryptsetup-initramfs/conf-hook
 
-echo "no-port-forwarding,no-agent-forwarding,no-X11-forwarding,command=\"/bin/cryptroot-unlock\" ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDss65zE2i1JDVdm9ybW1rXf7IeBHBgBzXKulA7L8iT9Rhzr/3U9F+GQCudmSx0GGGr9+N/FAVkZGajOxshPpd6y6+j4GARg5IYG33W+U/9jjrwKXHHNCs6ZGY/AXoNEcVHRUqr8D0BxpruvZVUYIz3oWG2RHYhBnjIg8sIH1+HjY8zhtkcfzrmo1coahK73xnrg4V9Jw9fRpRj9vqD57nuIyypbvY3cgGoiCJXSzXUme1+tT8dSIfW8Iufcv0ppc8e18x7LYjXP1uwJgKLItYZYwUWD//KbT0n3dHUscvarsE8BTwZVedxC2ilX2s8zSm9e7nhuU4XcQnVcrtrNLpz krullis@krullis-UX330CAK" > /etc/dropbear-initramfs/authorized_keys
-export IP=${IP}::98.128.186.83:255.255.255.192:${HOSTNAME}:enp3s0f0
+echo "no-port-forwarding,no-agent-forwarding,no-X11-forwarding,command=\"/bin/cryptroot-unlock\" ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDss65zE2i1JDVdm9ybW1rXf7IeBHBgBzXKulA7L8iT9Rhzr/3U9F+GQCudmSx0GGGr9+N/FAVkZGajOxshPpd6y6+j4GARg5IYG33W+U/9jjrwKXHHNCs6ZGY/AXoNEcVHRUqr8D0BxpruvZVUYIz3oWG2RHYhBnjIg8sIH1+HjY8zhtkcfzrmo1coahK73xnrg4V9Jw9fRpRj9vqD57nuIyypbvY3cgGoiCJXSzXUme1+tT8dSIfW8Iufcv0ppc8e18x7LYjXP1uwJgKLItYZYwUWD//KbT0n3dHUscvarsE8BTwZVedxC2ilX2s8zSm9e7nhuU4XcQnVcrtrNLpz krullis@krullis-UX330CAK" > /mnt/etc/dropbear-initramfs/authorized_keys
+#export IP=${IP}::98.128.186.83:255.255.255.192:${HOSTNAME}:enp3s0f0
 
-cat > /etc/initramfs-tools/conf.d/network_config << EOF
-export IP=${IP}::10.0.0.65:255.255.255.192:${HOSTNAME}:enp3s0f0
+cat > /mnt/etc/initramfs-tools/conf.d/network_config << EOF
+export IP=${IP}::10.64.6.65:255.255.255.0:${HOSTNAME}:eno1
 EOF
 
-echo "bnx2" >> /etc/initramfs-tools/modules
+echo "bnx2" >> /mnt/etc/initramfs-tools/modules
 
-update-initramfs -u -k all
-update-grub
+chroot /mnt update-initramfs -u -k all
+chroot /mnt update-grub
 
 exit
 umount /mnt/{boot,var,home}
