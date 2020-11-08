@@ -1,6 +1,8 @@
 #!/bin/sh
 
 #setup your network and fix resolver first
+# make sure you have the following packages installed
+# apt-get install debootstrap cryptsetup lvm2 gpart
 
 sgdisk -n 1:0:+64M -t 1:ef02 -n2:0:+500M -n3:0:0 -p /dev/sda
 mkfs.ext4 /dev/sda2
