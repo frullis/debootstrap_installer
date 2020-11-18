@@ -2,9 +2,9 @@
 
 #setup your network and fix resolver first
 # make sure you have the following packages installed
-# apt-get install debootstrap cryptsetup lvm2 gpart
+# apt-get install debootstrap cryptsetup lvm2 gpart gdisk
 
-sgdisk -n 1:0:+64M -t 1:ef02 -n2:0:+500M -n3:0:0 -p /dev/sda
+sgdisk -n 1:0:+64M -t 1:ef02 -n2:0:+500M -n3:0:0 -gp /dev/sda
 mkfs.ext4 /dev/sda2
 
 #encrypt and set a password
@@ -104,7 +104,7 @@ chmod 600 /mnt/root/.ssh
 echo "ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDss65zE2i1JDVdm9ybW1rXf7IeBHBgBzXKulA7L8iT9Rhzr/3U9F+GQCudmSx0GGGr9+N/FAVkZGajOxshPpd6y6+j4GARg5IYG33W+U/9jjrwKXHHNCs6ZGY/AXoNEcVHRUqr8D0BxpruvZVUYIz3oWG2RHYhBnjIg8sIH1+HjY8zhtkcfzrmo1coahK73xnrg4V9Jw9fRpRj9vqD57nuIyypbvY3cgGoiCJXSzXUme1+tT8dSIfW8Iufcv0ppc8e18x7LYjXP1uwJgKLItYZYwUWD//KbT0n3dHUscvarsE8BTwZVedxC2ilX2s8zSm9e7nhuU4XcQnVcrtrNLpz krullis@krullis-UX330CAK" > /mnt/root/.ssh/authorized_keys
 
 #Enable dropbear
-sed -i "s/NO_START=1/NO_START=0/" /mnt/etc/default/dropbear
+#sed -i "s/NO_START=1/NO_START=0/" /mnt/etc/default/dropbear
 echo "DEVICE=eno1" >> /mnt/etc/initramfs-tools/initramfs.conf
 sed -i "s/^#CRYPTSETUP=$/CRYPTSETUP=y/" /mnt/etc/cryptsetup-initramfs/conf-hook
 
