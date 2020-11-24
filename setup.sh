@@ -7,6 +7,7 @@
 
 #Change this settings before run this script
 export HOSTNAME=stoth2
+export IFACE=eno1.7
 export IP=10.64.8.44
 export NAMESERVER=1.1.1.1
 export NETMASK=255.255.255.0
@@ -72,12 +73,12 @@ cat > /mnt/etc/network/interfaces << EOF
 auto lo
 iface lo inet loopback
 
-auto eno1
-iface eno1 inet static
+auto ${IFACE}
+iface ${IFACE} inet static
 	address ${IP}
 	netmask ${NETMASK}
 	gateway ${GW}
-	pre-up /sbin/ip addr flush dev eno1 || true
+	pre-up /sbin/ip addr flush dev ${IFACE} || true
 EOF
 
 cat > /mnt/etc/apt/sources.list << EOF
