@@ -4,11 +4,25 @@
 # make sure you have the following packages installed
 # apt-get install debootstrap cryptsetup lvm2 gpart gdisk
 
+
+#Change this settings before run this script
+export HOSTNAME=stoth2
+export IP=10.64.8.44
+export NAMESERVER=1.1.1.1
+export NETMASK=255.255.255.0
+export GW=10.64.8.1
+export DOMAINNAME=example.net
+
+
+
+
 sgdisk -n 1:0:+64M -t 1:ef02 -n2:0:+500M -n3:0:0 -gp /dev/sda
 mkfs.ext4 /dev/sda2
 
 #encrypt and set a password
+printf "\033[0;31mSet crypt password for your partitions\033[0m"
 cryptsetup -s 512 -c aes-xts-plain64 luksFormat /dev/sda3
+printf "\033[0;31mEnter crypt password to unluck your partition\033[0m"
 cryptsetup luksOpen /dev/sda3 sda3_crypt
 
 #This may give you some error about cannot connect to lvmetad, (But should work anyway)
@@ -41,12 +55,9 @@ mount -o bind /sys /mnt/sys
 mount -o bind /run /mnt/run
 
 #chroot /mnt /bin/bash
+printf "\033[0;31mEnter root password:\033[0m"
 chroot /mnt passwd root
 chroot /mnt cp /proc/mounts /etc/mtab
-
-export HOSTNAME=stoth2
-export IP=98.128.186.83
-export DOMAINNAME=example.net
 
 echo "$HOSTNAME" > /mnt/etc/hostname
 echo "$HOSTNAME" > /mnt/etc/mailname
@@ -54,7 +65,7 @@ echo "$IP $HOSTNAME ${HOSTNAME}.${DOMAINNAME}" >> /mnt/etc/hosts
 
 cat > /mnt/etc/resolv.conf << EOF
 search $DOMAINNAME
-nameserver 1.1.1.1
+nameserver $NAMESERVER
 EOF
 
 cat > /mnt/etc/network/interfaces << EOF
@@ -64,9 +75,8 @@ iface lo inet loopback
 auto eno1
 iface eno1 inet static
 	address ${IP}
-	netmask 255.255.255.0
-	broadcast 10.64.6.255
-	gateway 10.64.6.1
+	netmask ${NETMASK}
+	gateway ${GW}
 	pre-up /sbin/ip addr flush dev eno1 || true
 EOF
 
@@ -80,7 +90,7 @@ deb-src http://ftp.se.debian.org/debian/ buster-updates main non-free contrib
 EOF
 
 chroot /mnt apt-get update
-chroot /mnt apt upgrade -y vim linux-base linux-image-amd64 linux-headers-amd64 grub-pc cryptsetup lvm2 initramfs-tools openssh-server busybox dropbear locales firmware-bnx2
+chroot /mnt DEBIAN_FRONTEND=noninteractive apt upgrade -y vim linux-base linux-image-amd64 linux-headers-amd64 grub-pc cryptsetup lvm2 initramfs-tools openssh-server busybox dropbear locales firmware-bnx2
 chroot /mnt dpkg-reconfigure locales
 
 echo "sda3_crypt UUID=$(blkid -s UUID -o value /dev/sda3) none luks" > /mnt/etc/crypttab
@@ -112,7 +122,7 @@ echo "no-port-forwarding,no-agent-forwarding,no-X11-forwarding,command=\"/bin/cr
 #export IP=${IP}::98.128.186.83:255.255.255.192:${HOSTNAME}:enp3s0f0
 
 cat > /mnt/etc/initramfs-tools/conf.d/network_config << EOF
-export IP=${IP}::10.64.6.65:255.255.255.0:${HOSTNAME}:eno1
+export IP=${IP}::${GW}:${NETMASK}:${HOSTNAME}:eno1
 EOF
 
 echo "bnx2" >> /mnt/etc/initramfs-tools/modules
