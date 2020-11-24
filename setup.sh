@@ -90,7 +90,7 @@ deb-src http://ftp.se.debian.org/debian/ buster-updates main non-free contrib
 EOF
 
 chroot /mnt apt-get update
-chroot /mnt DEBIAN_FRONTEND=noninteractive apt upgrade -y vim linux-base linux-image-amd64 linux-headers-amd64 grub-pc cryptsetup lvm2 initramfs-tools openssh-server busybox dropbear locales firmware-bnx2
+chroot /mnt apt upgrade -y vim linux-base linux-image-amd64 linux-headers-amd64 grub-pc cryptsetup lvm2 initramfs-tools openssh-server busybox dropbear locales firmware-bnx2
 chroot /mnt dpkg-reconfigure locales
 
 echo "sda3_crypt UUID=$(blkid -s UUID -o value /dev/sda3) none luks" > /mnt/etc/crypttab
